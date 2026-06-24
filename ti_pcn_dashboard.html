@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TI 300mm Migration PCN 進度追蹤儀表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg text-white font-bold text-xl">Adv</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">TI 300mm Migration PCN</h1>
+                <p class="text-xs text-slate-400">研華零件工程部 (CE) • 專案進度即時看板</p>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="relative w-full sm:w-80">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </span>
+                <input type="text" id="searchInput" placeholder="搜尋 Case ID, MPN, 研華料號, 備註..." 
+                       class="w-full bg-slate-800 text-slate-200 pl-9 pr-4 py-2 rounded-lg border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500 transition-all">
+            </div>
+            <button id="clearFiltersBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-slate-700 flex items-center gap-1 cursor-pointer">
+                清除全篩選
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div onclick="setFilter('Total')" id="kpi-Total" class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all group relative overflow-hidden active:scale-[0.99]">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-slate-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">總案數 (Total Cases)</p>
+                        <h3 class="text-3xl font-bold text-slate-900 mt-2" id="count-Total">0</h3>
+                    </div>
+                    <div class="p-2 bg-slate-100 rounded-lg text-slate-600 group-hover:bg-slate-200 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">當前追蹤的總變更案量</p>
+            </div>
+
+            <div onclick="setFilter('Completed')" id="kpi-Completed" class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 cursor-pointer hover:shadow-md hover:border-emerald-400 transition-all group relative overflow-hidden active:scale-[0.99]">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">已結案 (Completed)</p>
+                        <h3 class="text-3xl font-bold text-slate-900 mt-2 text-emerald-600" id="count-Completed">0</h3>
+                    </div>
+                    <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">已確認規格無誤並順利關閉</p>
+            </div>
+
+            <div onclick="setFilter('Pending TI response')" id="kpi-Pending" class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 cursor-pointer hover:shadow-md hover:border-amber-400 transition-all group relative overflow-hidden active:scale-[0.99]">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">等候原廠 (Pending TI)</p>
+                        <h3 class="text-3xl font-bold text-slate-900 mt-2 text-amber-600" id="count-Pending">0</h3>
+                    </div>
+                    <div class="p-2 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-100 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">正向 TI 索取 SDP 或數據資料</p>
+            </div>
+
+            <div onclick="setFilter('In Progress')" id="kpi-InProgress" class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all group relative overflow-hidden active:scale-[0.99]">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">RD 評估中 (In Progress)</p>
+                        <h3 class="text-3xl font-bold text-slate-900 mt-2 text-blue-600" id="count-InProgress">0</h3>
+                    </div>
+                    <div class="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-100 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">已通知 RD 窗口進行驗測或盤查</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 flex flex-col items-center justify-center">
+                <div class="w-full flex justify-between items-center mb-2">
+                    <h4 class="font-bold text-slate-900">進度狀態佔比</h4>
+                    <span class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">點擊區塊可篩選</span>
+                </div>
+                <div class="relative w-full max-w-[240px] aspect-square flex items-center justify-center">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 lg:col-span-2">
+                <div class="w-full flex justify-between items-center mb-4">
+                    <div>
+                        <h4 class="font-bold text-slate-900">各事業群 (BG) 受影響之 Where-Used 總量統計</h4>
+                        <p class="text-xs text-slate-400">數據隨當前篩選條件連動更新</p>
+                    </div>
+                </div>
+                <div class="w-full h-56">
+                    <canvas id="bgChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-xs border border-slate-200/80 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-slate-50/50">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-slate-900">案件清單詳細資訊</h3>
+                    <span id="filterBadge" class="hidden text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-0.5 rounded-full"></span>
+                </div>
+                <div class="text-xs text-slate-400 font-medium" id="tableMeta">顯示 0 筆資料</div>
+            </div>
+
+            <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table class="w-full text-left border-collapse relative">
+                    <thead class="bg-slate-100 text-slate-700 font-semibold text-xs tracking-wider uppercase sticky top-0 z-10 shadow-xs">
+                        <tr>
+                            <th class="px-4 py-3 bg-slate-100">Case ID</th>
+                            <th class="px-4 py-3 bg-slate-100">PCN #</th>
+                            <th class="px-4 py-3 bg-slate-100">TI MPN</th>
+                            <th class="px-4 py-3 bg-slate-100">研華料號</th>
+                            <th class="px-4 py-3 bg-slate-100">CE Owner</th>
+                            <th class="px-4 py-3 bg-slate-100">狀態</th>
+                            <th class="px-4 py-3 bg-slate-100">Due Date</th>
+                            <th class="px-4 py-3 bg-slate-100">進度備註 (Note)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 完全導入上傳的 34 筆實際追蹤 CSV 資料
+        const rawData = [
+          {
+            "id": "TIRFAB001",
+            "pcn": "20231219000",
+            "mpn": "SN74AHC1G08DBVR",
+            "advAntechPn": "14S5A10800",
+            "owner": "Otto",
+            "status": "Completed",
+            "dueDate": "2026-02-19",
+            "note": "2/5 通知Victor & kai;2/12 Kai通知RD; 2/12 Greg Add ISG EE leader Cooper。 4/7 Samson: 經盤查，包括SIoT與iMS，此用料使用處，driving略強應該不影響，同意不需測試;Cooper: PCN對14S5A10800零件規格無影響, 且在我們應用是power sequence邏輯控制, 非數位通訊資料傳輸, driving strength強一些無影響,故判定不用測 4/7 Alex: TI 沒有把 slew rate差異表示出來, 用文字描述無法量化. 雖然, AIMB目前與其他單位相同, 都是時序為主, 此PCN應不影響, 但TI PCN應該要交代Δt/Δv參數的偏差量才對. Ron差異=0的說明看不出Hi/Low暫態切換的差別. 4/8 Kai: 新舊製程容易在輸出驅動能力上有差異(新製程普遍較強), 但因為DATASHEET內沒有一個參數是代表或是去表示輸出驅動能力的, 因此我們用輸出電壓與電流的Ron關係來量化, Ron越低代表輸出能力越強. 而在SN74AHC1G08DBVR這顆的表中, 新舊Ron的差異幾乎為0, 因此這代表我們可以預期就這顆IC而言, 前後製程的輸出驅動能力近乎相同 4/29 Otto郵件詢問Alex進度 已結案PD: 5/4 OK ISG - Cooper PCN對14S5A10800零件規格無影響, 且在我們應用是power sequence邏輯控制, 非數位通訊資料傳輸, driving strength強一些無影響, 故判定不用測 SIoT - Samson 經盤查，包括SIoT與iMS，此用料使用處，driving略強應該不影響，同意不需測試 5/4 ECG-Alex:Regarding the excel sheet from TI, it shows Ron significant different and explain why the overshoot & undershoot on the logic output of SN74AHC1G08 from 200mm to 300mm fab",
+            "bg": {"ACG": 336, "AS+": 41, "ECG": 1300, "EIG": 610, "ESG": 463, "IAG": 217, "ICWG": 101, "IDSG": 0, "IEVG": 0, "iMS": 100, "ISG": 1497, "Oth": 1, "SIOT": 949, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB002",
+            "pcn": "20240826003",
+            "mpn": "GD75232PWR",
+            "advAntechPn": "1410007786",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-02-19",
+            "note": "2/5 通知Victor & kai;2/6 Kai通知RD; 2/10 Victor接洽樣品中 4/20 Being通知RD結案確認，預計4/22若無任何問題或疑慮即可結案  4/27 無RD回覆, 故Close",
+            "bg": {"ACG": 60, "AS+": 6, "ECG": 434, "EIG": 54, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 51, "Oth": 0, "SIOT": 62, "WISE": 59}
+          },
+          {
+            "id": "TIRFAB003",
+            "pcn": "20221031002",
+            "mpn": "MAX3243EIRHBR",
+            "advAntechPn": "1410027993-01",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-03-09",
+            "note": "2/23 通知Victor & kai; 2/25 Kai通知RD 3/12 Kai:To Chris and Greg, if your team have checked MAX3243EIRHBR PCN change last time(attached mail), then the MAX3243IDBR notice of this mail can be consider to the same changed, no need to check again since the tri-temp result are applied to both chips.",
+            "bg": {"ACG": 125, "AS+": 3, "ECG": 392, "EIG": 18, "ESG": 307, "IAG": 28, "ICWG": 58, "IDSG": 0, "IEVG": 0, "iMS": 50, "ISG": 372, "Oth": 0, "SIOT": 253, "WISE": 1}
+          },
+          {
+            "id": "TIRFAB004",
+            "pcn": "20231219000.1A",
+            "mpn": "SN74AHC1G125DBVR",
+            "advAntechPn": "1410001012",
+            "owner": "Otto",
+            "status": "Completed",
+            "dueDate": "2026-03-09",
+            "note": "2/23 通知Victor & kai; 2/25 Kai通知RD; Beam回覆內部討論完索取樣品 3/3 Cooper:We have no question since there is no electrical spec update 3/12 Alex need sample to verify 4/7 Beam: 因特性沒有明顯差異，目前不需要進行測試 5/4 待Alex回覆測試結果  已結案PD: 5/4 OK ESG - Beam 因特性沒有明顯差異，目前不需要進行測試 ISG - Cooper We have no question since there is no electrical spec update 5/4 ECG: Alex:Regarding the excel sheet from TI, it shows Ron significant different and explain why the overshoot & undershoot on the logic output of SN74AHC1G125 from 200mm to 300mm fab.",
+            "bg": {"ACG": 557, "AS+": 72, "ECG": 1550, "EIG": 435, "ESG": 617, "IAG": 49, "ICWG": 74, "IDSG": 0, "IEVG": 0, "iMS": 42, "ISG": 1046, "Oth": 0, "SIOT": 460, "WISE": 46}
+          },
+          {
+            "id": "TIRFAB005",
+            "pcn": "20230206000",
+            "mpn": "THVD1550DR",
+            "advAntechPn": "1410028116-01",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-03-30",
+            "note": "3/2 通知Victor & kai; 3/10 Kai:waiting the Tri-temp data of TPS54202DDCR/TPS54202DDCT from internal team 3/12 Vitor:After checking with AE internally, we won’t provide a separate summary because you can see the corresponding PCN notification attached. The “design” box is not checked because both pre-PCN and post-PCN material come from the same process technology LBC7. Since the process technology hasn’t changed, the electrical performance of pre-PCN and post-PCN parts should be identical.",
+            "bg": {"ACG": 153, "AS+": 36, "ECG": 805, "EIG": 267, "ESG": 2, "IAG": 667, "ICWG": 29, "IDSG": 0, "IEVG": 0, "iMS": 122, "ISG": 855, "Oth": 0, "SIOT": 64, "WISE": 23}
+          },
+          {
+            "id": "TIRFAB006",
+            "pcn": "20100712000",
+            "mpn": "TPS51200DRCR",
+            "advAntechPn": "1410020636",
+            "owner": "Betsy",
+            "status": "Completed",
+            "dueDate": "2026-03-30",
+            "note": "3/2 通知Victor & kai; 3/6 Victor:RFAB PCN on February 8, 2012 3/18 Betsy:跟Victor確認完, 由於這幾顆都已經是超過十年以上的PCN, 都已經切換至300mm已久, 也混料出了很久 而當初因為我們希望TI把還在混料出的都列出來, 所以才會涵蓋到這幾顆",
+            "bg": {"ACG": 544, "AS+": 25, "ECG": 1872, "EIG": 573, "ESG": 992, "IAG": 184, "ICWG": 114, "IDSG": 1, "IEVG": 0, "iMS": 8, "ISG": 705, "Oth": 0, "SIOT": 548, "WISE": 15}
+          },
+          {
+            "id": "TIRFAB007",
+            "pcn": "20100712000",
+            "mpn": "TPA3113D2PWPR",
+            "advAntechPn": "1410021119",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-03-30",
+            "note": "RFAB PCN on February 8, 2012; 3/18 Betsy:跟Victor確認完, 由於這幾顆都已經是超過十年以上的PCN, 都已經切換至300mm已久, 也混料出了很久 而當初因為我們希望TI把還在混料出的都列出來, 所以才會涵蓋到這幾顆",
+            "bg": {"ACG": 8, "AS+": 0, "ECG": 134, "EIG": 2, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 8, "Oth": 0, "SIOT": 0, "WISE": 88}
+          },
+          {
+            "id": "TIRFAB008",
+            "pcn": "20100712000",
+            "mpn": "TPS2557DRBR",
+            "advAntechPn": "1410022711-01",
+            "owner": "Betsy",
+            "status": "Completed",
+            "dueDate": "2026-03-30",
+            "note": "RFAB PCN on February 8, 2012; 3/18 Betsy:跟Victor確認完, 由於這幾顆都已經是超過十年以上的PCN, 都已經切換至300mm已久, 也混料出了很久 而當初因為我們希望TI把還在混料出的都列出來, 所以才會涵蓋到這幾顆",
+            "bg": {"ACG": 22, "AS+": 0, "ECG": 86, "EIG": 37, "ESG": 167, "IAG": 18, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 3, "ISG": 44, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB009",
+            "pcn": "20220615003",
+            "mpn": "TL072ACDR",
+            "advAntechPn": "1410026388-01",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-04-06",
+            "note": "3/9 通知Victor & kai;Victor提供SDP;3/13 Kai 通知RD 3/13 Victor:The old version is the non-“H” device, while the new version includes an “H” in the device name. We no longer manufacture the old die 4/20 Being通知RD結案確認，預計4/22若無任何問題或疑慮即可結案 4/30 Elron:可以關閉了, Gaming RD 已通知 UK 處理, thanks.",
+            "bg": {"ACG": 171, "AS+": 0, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB010",
+            "pcn": "20221031002",
+            "mpn": "MAX3243IDBR",
+            "advAntechPn": "1410013437",
+            "owner": "Being",
+            "status": "Completed",
+            "dueDate": "2026-04-06",
+            "note": "3/9 通知Victor & kai;3/13 Kai通知RD; 3/17 Chris:ARM RISC測試下，並沒有看到異常",
+            "bg": {"ACG": 0, "AS+": 13, "ECG": 44, "EIG": 25, "ESG": 5, "IAG": 0, "ICWG": 9, "IDSG": 0, "IEVG": 0, "iMS": 2, "ISG": 32, "Oth": 0, "SIOT": 0, "WISE": 2}
+          },
+          {
+            "id": "TIRFAB011",
+            "pcn": "20221216004",
+            "mpn": "SN74LV00ADR",
+            "advAntechPn": "1410020655",
+            "owner": "Otto",
+            "status": "Completed",
+            "dueDate": "2026-04-13",
+            "note": "3/16 通知Victor & kai; 3/26 Kai通知RD 4/7 Cy:IAG 的部分，已請 Casey.Chen 幫忙提供樣品，待收到後會進行驗證。 | Colin:此料影響到ICWG的機種目前已轉至IAG 4/7 Greg: ISG部份使用為北京研發team  huiling.sun在處理 4/30 : mail請 CY提供預計可完成測試的日期;5/5 Cj:測試沒有問題  已結案PD: 5/5 OK ISG - huiling.sun 1410020655费领原厂标签CSO:RFB的芯片已在MIC-3612验证OK，这颗料原本已在MIC-3612 BOM中作为14S5A00000的2nd source替代料导入，后续生产正常使用即可 IAG-Cj:這個料在我產品的應用上 沒有到很critical  所以不用驗測!(4/21) ICWG->IAG-Cj:測試沒有問題(5/5)",
+            "bg": {"ACG": 0, "AS+": 0, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 31, "ICWG": 25, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 18, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB012",
+            "pcn": "20221216004",
+            "mpn": "SN74LV04APWR",
+            "advAntechPn": "1410024861-01",
+            "owner": "Otto",
+            "status": "Completed",
+            "dueDate": "2026-04-13",
+            "note": "3/16 通知Victor & kai; 3/26 Kai通知RD 4/7 Cj:IAG  已經有開費領  評估| Colin:此料影響到ICWG的機種目前已轉至IAG 4/7 Greg: ISG主要用在ITA產品,Terry team在處理 ICWG - Colin 響到ICWG的機種目前已轉至IAG.相關訊息也通知 IAG Cj  => 4/21 已發信請 RD確認評估結果 IAG - CY已請 Casey.Chen 幫忙提供樣品，待收到後會進行驗證。 => 已提供 sample給 RD 5/4 IAG - Chitong: ADAM這邊用到1410024861-01，預計下週四(5/14)回覆結果。 5/14 Cy: 1410024861-01新PCN，確認可用  已結案PD: 5/14 OK ISG - Terry.Lin  ICWG-> Cj:這個料在我產品的應用上 沒有到很critical  所以不用驗測! IAG-Cj: 1410024861-01新PCN，確認可用",
+            "bg": {"ACG": 9, "AS+": 0, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 89, "ICWG": 72, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 23, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB013",
+            "pcn": "20221216004",
+            "mpn": "SN74LV244APWR",
+            "advAntechPn": "14S5A24424",
+            "owner": "Otto",
+            "status": "Completed",
+            "dueDate": "2026-04-20",
+            "note": "3/23 通知Victor & kai; 4/7 Kai通知RD ACG - Elton 尚未回覆 => 4/21 已發信確認評估結果 ECG - 轉由 Jacquse處理 => 4/21 RD 申請 10 pics sample, 已轉請 Casey提供 4/30 : mail 請 Hanfei & Jacques 回覆是否已拿到 sample & 預計可完成測試的日期 5/7 Jacques confirmed RD have received TI samples, pending for RD's feedback on test schedule and results. 5/14 Erik: 此料件PCN变更 验证单位评估不做测试  已結案PD: 5/14 OK IAG - 沒有影響無需領 sample ACG-Elton:此料用於 BJ22 DIO Control, 客戶設計線路有串接 100 ohm 電阻, 更換風險低並無問題 ECG- 5/14 Erik: 此料件PCN变更 验证单位评估不做测试",
+            "bg": {"ACG": 43, "AS+": 11, "ECG": 28, "EIG": 0, "ESG": 0, "IAG": 26, "ICWG": 4, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 6, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB014",
+            "pcn": "20221216006",
+            "mpn": "TPS40210DGQR",
+            "advAntechPn": "1410022994-01",
+            "owner": "Betsy",
+            "status": "In Progress",
+            "dueDate": "2026-07-10",
+            "note": "3/23 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; 5/6 Kai通知RD (Elton, Colin, Greg). 5/28: Colin/Greg索取樣品, 已請Casey處理=>RD 已取得樣品 6/8: ICWG Colin已回覆量測無太大差異, ISG Cooper回覆安排測試中(6/15 Cooper處理短缺料測試中,目前Pending)",
+            "bg": {"ACG": 372, "AS+": 3, "ECG": 3, "EIG": 0, "ESG": 4, "IAG": 1, "ICWG": 65, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 31, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB015",
+            "pcn": "20221216011",
+            "mpn": "TL052ACDR",
+            "advAntechPn": "1410000094",
+            "owner": "Being",
+            "status": "In Progress",
+            "dueDate": "2026-07-17",
+            "note": "3/30 通知Victor & kai, 4/20 Being提醒要記得處理 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/18 TI Kai 通知RD; 6/22 Elton與TI 問題討論",
+            "bg": {"ACG": 6, "AS+": 0, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB016",
+            "pcn": "20221216011",
+            "mpn": "TL072BCDR",
+            "advAntechPn": "1410000114",
+            "owner": "Being",
+            "status": "In Progress",
+            "dueDate": "2026-07-17",
+            "note": "3/30 通知Victor & kai, 4/20 Being提醒要記得處理 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/18 TI Kai 通知RD; 6/22 Elton與TI 問題討論",
+            "bg": {"ACG": 6, "AS+": 0, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB017",
+            "pcn": "20230206000",
+            "mpn": "TPS82085SILR",
+            "advAntechPn": "1410026524-01",
+            "owner": "Betsy",
+            "status": "Completed",
+            "dueDate": "2026-03-30",
+            "note": "2/26 Victor 提供Tri-Temp_Data 3/12 Vitor:After checking with AE internally, we won’t provide a separate summary because you can see the corresponding PCN notification attached. The “design” box is not checked because both pre-PCN and post-PCN material come from the same process technology LBC7. Since the process technology hasn’t changed, the electrical performance of pre-PCN and post-PCN parts should be identical",
+            "bg": {"ACG": 375, "AS+": 13, "ECG": 1871, "EIG": 289, "ESG": 243, "IAG": 27, "ICWG": 11, "IDSG": 5, "IEVG": 5, "iMS": 479, "ISG": 371, "Oth": 0, "SIOT": 299, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB018",
+            "pcn": "20230627002",
+            "mpn": "LM358DR",
+            "advAntechPn": "14S1035810",
+            "owner": "Being",
+            "status": "Pending TI response",
+            "dueDate": "2026-07-17",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 821, "AS+": 33, "ECG": 46, "EIG": 0, "ESG": 85, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 153, "Oth": 0, "SIOT": 97, "WISE": 8}
+          },
+          {
+            "id": "TIRFAB019",
+            "pcn": "20230814004",
+            "mpn": "LM2901PWR",
+            "advAntechPn": "1410003065",
+            "owner": "Being",
+            "status": "In Progress",
+            "dueDate": "2026-07-21",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026 6/23 TI Kai通知RD",
+            "bg": {"ACG": 5, "AS+": 6, "ECG": 17, "EIG": 18, "ESG": 14, "IAG": 50, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 16}
+          },
+          {
+            "id": "TIRFAB020",
+            "pcn": "20230814004",
+            "mpn": "LM339PWR",
+            "advAntechPn": "1410027136-01",
+            "owner": "Being",
+            "status": "In Progress",
+            "dueDate": "2026-07-21",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026 6/23 TI Kai通知RD",
+            "bg": {"ACG": 11, "AS+": 7, "ECG": 0, "EIG": 0, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB021",
+            "pcn": "20230906002",
+            "mpn": "ISO3080DWR",
+            "advAntechPn": "1410025462-01",
+            "owner": "Being",
+            "status": "Pending TI response",
+            "dueDate": "2026-07-24",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 34, "AS+": 0, "ECG": 22, "EIG": 0, "ESG": 0, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 0, "Oth": 0, "SIOT": 0, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB022",
+            "pcn": "20231031006",
+            "mpn": "TL331IDBVR",
+            "advAntechPn": "1410002882",
+            "owner": "Being",
+            "status": "Pending TI response",
+            "dueDate": "2026-07-24",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 277, "AS+": 5, "ECG": 994, "EIG": 406, "ESG": 1, "IAG": 0, "ICWG": 90, "IDSG": 225, "IEVG": 0, "iMS": 7, "ISG": 40, "Oth": 0, "SIOT": 278, "WISE": 2}
+          },
+          {
+            "id": "TIRFAB023",
+            "pcn": "20231219000",
+            "mpn": "SN74AHC1G04DBVR",
+            "advAntechPn": "14S5A10400",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-07-31",
+            "note": "4/20 通知Victor & kai, 4/27 詢問TI pending重啟時程, 4/30 TI無回覆進度 5/5 CS mail to TI; Awaiting TI's reply;6/9 Misia 跟催 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 5, "AS+": 11, "ECG": 1, "EIG": 0, "ESG": 0, "IAG": 22, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 75, "Oth": 0, "SIOT": 0, "WISE": 2}
+          },
+          {
+            "id": "TIRFAB024",
+            "pcn": "20231219000",
+            "mpn": "SN74AHC1G86DBVR",
+            "advAntechPn": "1400000325",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-07-31",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 206, "AS+": 35, "ECG": 392, "EIG": 57, "ESG": 858, "IAG": 39, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 31, "ISG": 878, "Oth": 0, "SIOT": 111, "WISE": 101}
+          },
+          {
+            "id": "TIRFAB025",
+            "pcn": "20231219000",
+            "mpn": "SN74AHCT1G04DBVR",
+            "advAntechPn": "1410000388",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-07",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 55, "AS+": 2, "ECG": 0, "EIG": 48, "ESG": 0, "IAG": 6, "ICWG": 2, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 6, "Oth": 0, "SIOT": 5, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB026",
+            "pcn": "20231219000",
+            "mpn": "SN74AHCT1G08DBVR",
+            "advAntechPn": "14S5A10801",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-07",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 436, "AS+": 31, "ECG": 14, "EIG": 19, "ESG": 126, "IAG": 127, "ICWG": 114, "IDSG": 0, "IEVG": 0, "iMS": 110, "ISG": 538, "Oth": 0, "SIOT": 436, "WISE": 6}
+          },
+          {
+            "id": "TIRFAB027",
+            "pcn": "20231219000",
+            "mpn": "SN74AHCT1G14DBVR",
+            "advAntechPn": "14S5A11410",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-14",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 1, "AS+": 35, "ECG": 8, "EIG": 15, "ESG": 5, "IAG": 0, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 337, "Oth": 0, "SIOT": 2, "WISE": 0}
+          },
+          {
+            "id": "TIRFAB028",
+            "pcn": "20231219000",
+            "mpn": "SN74AHCT1G32DBVR",
+            "advAntechPn": "14S5A13210",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-14",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 12, "AS+": 20, "ECG": 0, "EIG": 0, "ESG": 3, "IAG": 78, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 25, "ISG": 894, "Oth": 0, "SIOT": 0, "WISE": 12}
+          },
+          {
+            "id": "TIRFAB029",
+            "pcn": "20231219000",
+            "mpn": "SN74LV1T34DBVR",
+            "advAntechPn": "1410027741-01",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-21",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 559, "AS+": 0, "ECG": 704, "EIG": 562, "ESG": 250, "IAG": 60, "ICWG": 43, "IDSG": 0, "IEVG": 0, "iMS": 55, "ISG": 451, "Oth": 1, "SIOT": 465, "WISE": 2}
+          },
+          {
+            "id": "TIRFAB030",
+            "pcn": "20240203000",
+            "mpn": "TPS2065CDBVR",
+            "advAntechPn": "1410022339",
+            "owner": "Betsy",
+            "status": "Completed",
+            "dueDate": "2026-06-23",
+            "note": "5/26 通知Victor & kai, 5/28 TI Victor:Datasheet PCN do not have SDP 6/8經確認此份PCN只有PIN1 的symbolization變更(非RFAB issue)",
+            "bg": {"ACG": 162, "AS+": 16, "ECG": 1362, "EIG": 549, "ESG": 118, "IAG": 162, "ICWG": 0, "IDSG": 1, "IEVG": 0, "iMS": 520, "ISG": 487, "Oth": 0, "SIOT": 201, "WISE": 18}
+          },
+          {
+            "id": "TIRFAB031",
+            "pcn": "20240514001",
+            "mpn": "SN74LVC00APWR",
+            "advAntechPn": "1410000164",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-21",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 2, "AS+": 8, "ECG": 0, "EIG": 0, "ESG": 92, "IAG": 191, "ICWG": 141, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 3, "Oth": 0, "SIOT": 1, "WISE": 10}
+          },
+          {
+            "id": "TIRFAB032",
+            "pcn": "20240628002",
+            "mpn": "SN74AHC273PWR",
+            "advAntechPn": "14S5A27300",
+            "owner": "Otto",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-28",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 0, "AS+": 19, "ECG": 0, "EIG": 0, "ESG": 2, "IAG": 99, "ICWG": 0, "IDSG": 0, "IEVG": 0, "iMS": 0, "ISG": 36, "Oth": 0, "SIOT": 0, "WISE": 2}
+          },
+          {
+            "id": "TIRFAB033",
+            "pcn": "20240724002",
+            "mpn": "TS3USB221ARSER",
+            "advAntechPn": "1410025382-01",
+            "owner": "Being",
+            "status": "Pending TI response",
+            "dueDate": "2026-08-28",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 81, "AS+": 0, "ECG": 458, "EIG": 100, "ESG": 350, "IAG": 13, "ICWG": 12, "IDSG": 13, "IEVG": 6, "iMS": 195, "ISG": 434, "Oth": 0, "SIOT": 78, "WISE": 5}
+          },
+          {
+            "id": "TIRFAB034",
+            "pcn": "20240930001",
+            "mpn": "LM2903DGKR",
+            "advAntechPn": "1410025670-01",
+            "owner": "Being",
+            "status": "Pending TI response",
+            "dueDate": "2026-09-04",
+            "note": "5/26 通知Victor & kai;5/28 TI Victor提供SDP 6/15 TI Victor:Target to complete by the end of Sep 2026",
+            "bg": {"ACG": 94, "AS+": 2, "ECG": 1171, "EIG": 182, "ESG": 14, "IAG": 0, "ICWG": 0, "IDSG": 288, "IEVG": 0, "iMS": 54, "ISG": 8, "Oth": 0, "SIOT": 174, "WISE": 0}
+          }
+        ];
+
+        // 系統變數狀態
+        let currentStatusFilter = "Total";
+        let searchQuery = "";
+        let statusChartInstance = null;
+        let bgChartInstance = null;
+
+        const bgList = ['ACG', 'AS+', 'ECG', 'EIG', 'ESG', 'IAG', 'ICWG', 'IDSG', 'IEVG', 'iMS', 'ISG', 'Oth', 'SIOT', 'WISE'];
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initKPIStaticCounts();
+            updateDashboard();
+            
+            // 搜尋監聽
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                updateDashboard();
+            });
+
+            // 清除篩選鈕
+            document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+                currentStatusFilter = "Total";
+                searchQuery = "";
+                document.getElementById('searchInput').value = "";
+                updateDashboard();
+            });
+        });
+
+        // 預先寫入不變的 KPI 全域總量基數 (維持 Dashboard 標準設計)
+        function initKPIStaticCounts() {
+            let comp = 0, pend = 0, prog = 0;
+            rawData.forEach(item => {
+                if(item.status === 'Completed') comp++;
+                else if(item.status === 'Pending TI response') pend++;
+                else if(item.status === 'In Progress') prog++;
+            });
+            document.getElementById('count-Total').innerText = rawData.length;
+            document.getElementById('count-Completed').innerText = comp;
+            document.getElementById('count-Pending').innerText = pend;
+            document.getElementById('count-InProgress').innerText = prog;
+        }
+
+        // 變更進度篩選核心
+        function setFilter(statusType) {
+            currentStatusFilter = statusType;
+            updateDashboard();
+        }
+
+        // 主更新程序：資料篩選 -> 更新圖表與表格
+        function updateDashboard() {
+            // 1. 資料雙重篩選 (狀態 + 關鍵字)
+            const filteredData = rawData.filter(item => {
+                const matchesStatus = (currentStatusFilter === "Total" || item.status === currentStatusFilter);
+                const matchesSearch = !searchQuery || 
+                    item.id.toLowerCase().includes(searchQuery) ||
+                    item.pcn.toLowerCase().includes(searchQuery) ||
+                    item.mpn.toLowerCase().includes(searchQuery) ||
+                    item.advAntechPn.toLowerCase().includes(searchQuery) ||
+                    item.owner.toLowerCase().includes(searchQuery) ||
+                    item.note.toLowerCase().includes(searchQuery);
+                return matchesStatus && matchesSearch;
+            });
+
+            // 更新篩選標籤
+            const badge = document.getElementById('filterBadge');
+            if (currentStatusFilter !== "Total" || searchQuery) {
+                badge.classList.remove('hidden');
+                badge.innerText = `篩選中: ${currentStatusFilter !== "Total" ? currentStatusFilter : ""} ${searchQuery ? '關鍵字:"'+searchQuery+'"' : ''}`;
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            // 更新 KPI 卡片高亮框線
+            ['Total', 'Completed', 'Pending', 'InProgress'].forEach(k => {
+                const el = document.getElementById(`kpi-${k}`);
+                el.className = el.className.replace(/ border-blue-500| border-slate-200\/80/g, '');
+                if((k === 'Total' && currentStatusFilter === 'Total') || 
+                   (k === 'Completed' && currentStatusFilter === 'Completed') ||
+                   (k === 'Pending' && currentStatusFilter === 'Pending TI response') ||
+                   (k === 'InProgress' && currentStatusFilter === 'In Progress')) {
+                    el.className += ' border-blue-500 ring-2 ring-blue-500/10';
+                } else {
+                    el.className += ' border-slate-200/80';
+                }
+            });
+
+            // 2. 更新圖表
+            renderStatusChart(filteredData);
+            renderBgChart(filteredData);
+
+            // 3. 更新表格
+            renderTable(filteredData);
+        }
+
+        // 繪製圓環圖 (狀態佔比)
+        function renderStatusChart(data) {
+            let comp = 0, pend = 0, prog = 0;
+            data.forEach(item => {
+                if(item.status === 'Completed') comp++;
+                else if(item.status === 'Pending TI response') pend++;
+                else if(item.status === 'In Progress') prog++;
+            });
+
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if (statusChartInstance) statusChartInstance.destroy();
+
+            statusChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['已結案', '等候原廠', 'RD評估中'],
+                    datasets: [{
+                        data: [comp, pend, prog],
+                        backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                    },
+                    onClick: (evt, item) => {
+                        if (item && item.length > 0) {
+                            const index = item[0].index;
+                            const statusMap = ['Completed', 'Pending TI response', 'In Progress'];
+                            setFilter(statusMap[index]);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 繪製長條圖 (事業群動態累加用量統計)
+        function renderBgChart(data) {
+            // 累加每個 BG 的 Where-used 數值
+            const bgTotals = {};
+            bgList.forEach(bg => bgTotals[bg] = 0);
+            
+            data.forEach(item => {
+                bgList.forEach(bg => {
+                    bgTotals[bg] += (item.bg[bg] || 0);
+                });
+            });
+
+            const ctx = document.getElementById('bgChart').getContext('2d');
+            if (bgChartInstance) bgChartInstance.destroy();
+
+            bgChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bgList,
+                    datasets: [{
+                        label: 'Where-Used 數量加總',
+                        data: bgList.map(bg => bgTotals[bg]),
+                        backgroundColor: 'rgba(59, 130, 246, 0.85)',
+                        hoverBackgroundColor: '#2563EB',
+                        borderRadius: 6,
+                        barThickness: 'flex'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#E2E8F0' }, ticks: { font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        // 填入詳細表格
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            document.getElementById('tableMeta').innerText = `目前顯示 ${data.length} / 34 筆資料`;
+            tbody.innerHTML = "";
+
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 font-medium bg-slate-50/50">無符合當前條件的案件資料</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                let statusBadge = "";
+                if(item.status === 'Completed') statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Completed</span>`;
+                else if(item.status === 'Pending TI response') statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Pending TI</span>`;
+                else if(item.status === 'In Progress') statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">In Progress</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors group";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-semibold text-slate-900">${item.id}</td>
+                    <td class="px-4 py-3 text-slate-500 font-mono text-xs">${item.pcn}</td>
+                    <td class="px-4 py-3 font-medium text-slate-700">${item.mpn}</td>
+                    <td class="px-4 py-3 text-slate-600 font-mono text-xs">${item.advAntechPn}</td>
+                    <td class="px-4 py-3 text-slate-600 font-medium">${item.owner}</td>
+                    <td class="px-4 py-3">${statusBadge}</td>
+                    <td class="px-4 py-3 text-slate-500 font-medium text-xs whitespace-nowrap">${item.dueDate || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-600 max-w-sm xl:max-w-xl truncate group-hover:whitespace-normal group-hover:break-all transition-all" title="${item.note}">
+                        ${item.note || '<span class="text-slate-300">無備註說明</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
